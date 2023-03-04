@@ -1,12 +1,10 @@
 import React, { Component } from 'react';
-import axios from 'axios';
-
 import Modal from './Modal/Modal';
-
 import Button from './Button/Button';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Loader from './Loader/Loader';
+import { fetchImages } from '../Api';
 
 class App extends Component {
   state = {
@@ -16,6 +14,7 @@ class App extends Component {
     isLoading: false,
     error: null,
     selectedImage: null,
+    totalPages: null,
   };
 
   componentDidUpdate(prevProps, prevState) {
@@ -35,18 +34,15 @@ class App extends Component {
 
   fetchImages = () => {
     const { searchQuery, currentPage } = this.state;
-    const API_KEY = '33063582-bd88d5aaf715a71a39133f1fd';
-    const BASE_URL = 'https://pixabay.com/api/';
-    const URL = `${BASE_URL}?key=${API_KEY}&q=${searchQuery}&page=${currentPage}&per_page=12`;
 
     this.setState({ isLoading: true });
 
-    axios
-      .get(URL)
+    fetchImages(searchQuery, currentPage)
       .then(response => {
         this.setState(prevState => ({
-          images: [...prevState.images, ...response.data.hits],
+          images: [...prevState.images, ...response.hits],
           currentPage: prevState.currentPage + 1,
+          totalPages: Math.ceil(response.totalHits / 12),
         }));
       })
       .catch(error => this.setState({ error }))
@@ -62,7 +58,10 @@ class App extends Component {
   };
 
   render() {
-    const { images, isLoading, error, selectedImage } = this.state;
+    const { images, isLoading, error, selectedImage, currentPage, totalPages } =
+      this.state;
+
+    const showLoadMore = currentPage <= totalPages && images.length > 0;
 
     return (
       <div>
@@ -76,9 +75,7 @@ class App extends Component {
 
         {isLoading && <Loader />}
 
-        {images.length > 0 && !isLoading && (
-          <Button onClick={this.fetchImages} />
-        )}
+        {showLoadMore && <Button onClick={this.fetchImages} />}
 
         {selectedImage && (
           <Modal onClose={this.handleModalClose}>
