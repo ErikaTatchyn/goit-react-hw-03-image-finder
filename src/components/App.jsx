@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal/Modal';
 import Button from './Button/Button';
 import Searchbar from './Searchbar/Searchbar';
@@ -6,85 +6,68 @@ import ImageGallery from './ImageGallery/ImageGallery';
 import Loader from './Loader/Loader';
 import { fetchImages } from '../Api';
 
-class App extends Component {
-  state = {
-    searchQuery: '',
-    images: [],
-    currentPage: 1,
-    isLoading: false,
-    error: null,
-    selectedImage: null,
-    totalPages: null,
-  };
+function App() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [totalPages, setTotalPages] = useState(null);
 
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.searchQuery !== this.state.searchQuery) {
-      this.fetchImages();
+  useEffect(() => {
+    if (searchQuery !== '') {
+      fetchImages(searchQuery, currentPage)
+        .then(response => {
+          setImages(prevImages => [...prevImages, ...response.hits]);
+          setCurrentPage(prevPage => prevPage + 1);
+          setTotalPages(Math.ceil(response.totalHits / 12));
+        })
+        .catch(error => setError(error))
+        .finally(() => setIsLoading(false));
     }
-  }
+  }, [searchQuery, currentPage]);
 
-  onChangeQuery = query => {
-    this.setState({
-      searchQuery: query,
-      currentPage: 1,
-      images: [],
-      error: null,
-    });
+  const handleSearchSubmit = query => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+    setImages([]);
+    setError(null);
   };
 
-  fetchImages = () => {
-    const { searchQuery, currentPage } = this.state;
-
-    this.setState({ isLoading: true });
-
-    fetchImages(searchQuery, currentPage)
-      .then(response => {
-        this.setState(prevState => ({
-          images: [...prevState.images, ...response.hits],
-          currentPage: prevState.currentPage + 1,
-          totalPages: Math.ceil(response.totalHits / 12),
-        }));
-      })
-      .catch(error => this.setState({ error }))
-      .finally(() => this.setState({ isLoading: false }));
+  const handleSelectImage = image => {
+    setSelectedImage(image);
   };
 
-  handleSelectImage = image => {
-    this.setState({ selectedImage: image });
+  const handleModalClose = () => {
+    setSelectedImage(null);
   };
 
-  handleModalClose = () => {
-    this.setState({ selectedImage: null });
-  };
+  const showLoadMore = currentPage <= totalPages && images.length > 0;
 
-  render() {
-    const { images, isLoading, error, selectedImage, currentPage, totalPages } =
-      this.state;
+  return (
+    <div>
+      <Searchbar onSubmit={handleSearchSubmit} />
 
-    const showLoadMore = currentPage <= totalPages && images.length > 0;
+      {error && <p>Oops! Something went wrong. Please try again later.</p>}
 
-    return (
-      <div>
-        <Searchbar onSubmit={this.onChangeQuery} />
+      {images.length > 0 && (
+        <ImageGallery images={images} onSelect={handleSelectImage} />
+      )}
 
-        {error && <p>Oops! Something went wrong. Please try again later.</p>}
+      {isLoading && <Loader />}
 
-        {images.length > 0 && (
-          <ImageGallery images={images} onSelect={this.handleSelectImage} />
-        )}
+      {showLoadMore && (
+        <Button onClick={() => setCurrentPage(prevPage => prevPage + 1)} />
+      )}
 
-        {isLoading && <Loader />}
-
-        {showLoadMore && <Button onClick={this.fetchImages} />}
-
-        {selectedImage && (
-          <Modal onClose={this.handleModalClose}>
-            <img src={selectedImage.largeImageURL} alt={selectedImage.tags} />
-          </Modal>
-        )}
-      </div>
-    );
-  }
+      {selectedImage && (
+        <Modal onClose={handleModalClose}>
+          <img src={selectedImage.largeImageURL} alt={selectedImage.tags} />
+        </Modal>
+      )}
+    </div>
+  );
 }
 
 export default App;

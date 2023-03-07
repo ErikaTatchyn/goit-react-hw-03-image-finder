@@ -16,7 +16,7 @@ const Button = ({ onClick, isHidden = false }) => {
 
 Button.propTypes = {
   onClick: PropTypes.func.isRequired,
-  isHidden: PropTypes.bool.isRequired,
+  isHidden: PropTypes.bool,
 };
 
 export default Button;
